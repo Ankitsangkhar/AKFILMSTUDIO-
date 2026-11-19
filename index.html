@@ -11,11 +11,11 @@
         header h1 { font-size: 20px; color: #e50914; letter-spacing: 1px; }
         .admin-btn { background: #333; color: #fff; border: 1px solid #666; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; }
         .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
-        
+
         /* Film Grid */
         .film-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-top: 20px; }
         .film-card { background: #1f2833; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .film-card img { width: 100%; height: 340px; object-fit: cover; background: #111; }
+        .film-card img { width: 100%; height: 240px; object-fit: cover; background: #111; }
         .film-info { padding: 15px; }
         .film-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
         .film-desc { font-size: 13px; color: #c5c6c7; margin-bottom: 12px; }
@@ -29,7 +29,7 @@
         .modal-content h2 { margin-bottom: 15px; color: #66fcf1; font-size: 18px; }
         input, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 5px; border: 1px solid #45a29e; background: #0b0c10; color: #fff; }
         .close-btn { background: #555; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; margin-top: 8px; cursor: pointer; }
-        video, iframe { width: 100%; border-radius: 8px; margin-top: 10px; }
+        iframe { width: 100%; border-radius: 8px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -49,9 +49,9 @@
     <div class="modal-content">
         <h2>➕ Add / Update Film & Ticket Price</h2>
         <input type="text" id="filmTitle" placeholder="Film Name (e.g. THE LOST DAYS)">
-        <input type="text" id="filmPoster" placeholder="Poster Image URL (Direct link)">
-        <input type="number" id="filmPrice" placeholder="Ticket Price in Rs. (e.g. 100)">
-        <input type="text" id="filmVideo" placeholder="Video Embed Link (Bunny/YouTube/Drive)">
+        <input type="text" id="filmPoster" placeholder="Direct Poster Image Link (.jpg / .png)">
+        <input type="number" id="filmPrice" placeholder="Ticket Price in Rs. (e.g. 5 or 100)">
+        <input type="text" id="filmVideo" placeholder="YouTube / Video Link">
         <textarea id="filmDesc" rows="3" placeholder="Short Story / Description"></textarea>
         <button class="buy-btn" onclick="saveFilm()">Save Film</button>
         <button class="close-btn" onclick="closeModal('adminModal')">Close</button>
@@ -66,7 +66,7 @@
         <p id="payAmount" style="color: #60bb46; font-size: 18px; margin-bottom: 15px;"></p>
         <p style="font-size: 13px; color: #ccc; margin-bottom: 15px;">
             eSewa ID: <b>98XXXXXXXX</b> (Aafno eSewa Number rakhnus)<br>
-            Payment garepaxi Transaction Code / Remarks halaunus:
+            Payment garepaxi Transaction Code halaunus:
         </p>
         <input type="text" id="txnCode" placeholder="Enter eSewa Transaction Code">
         <button class="buy-btn" onclick="confirmPayment()">Verify & Watch Film</button>
@@ -84,17 +84,33 @@
 </div>
 
 <script>
-    // Default Sample Film
-    let films = JSON.parse(localStorage.getItem('ak_films')) || [
+    const defaultPoster = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600";
+
+    function toEmbedUrl(url) {
+        if (!url) return "";
+        url = url.trim();
+        const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+        if (shortMatch) return "https://www.youtube.com/embed/" + shortMatch[1];
+        const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+        if (watchMatch) return "https://www.youtube.com/embed/" + watchMatch[1];
+        if (url.includes("youtube.com/embed/")) return url;
+        return url;
+    }
+
+    // Default permanent film list (visible to everyone)
+    const baseFilms = [
         {
-            id: 1,
-            title: "THE LOST DAYS (Premiere)",
-            poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500",
-            price: 100,
-            video: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-            desc: "A psychological mystery thriller by A.K Studio."
+            id: 101,
+            title: "THE lost days",
+            poster: "https://img.youtube.com/vi/jPkcMynd_Ro/hqdefault.jpg",
+            price: 5,
+            video: "https://www.youtube.com/embed/jPkcMynd_Ro",
+            desc: "An original release from AK Film Studio."
         }
     ];
+
+    let extraFilms = JSON.parse(localStorage.getItem('ak_extra_films')) || [];
+    let films = [...baseFilms, ...extraFilms];
     let unlocked = JSON.parse(localStorage.getItem('ak_unlocked')) || [];
     let selectedFilm = null;
 
@@ -105,13 +121,13 @@
             const isUnlocked = unlocked.includes(film.id);
             list.innerHTML += `
                 <div class="film-card">
-                    <img src="${film.poster}" alt="${film.title}">
+                    <img src="${film.poster}" alt="${film.title}" onerror="this.onerror=null;this.src='${defaultPoster}';">
                     <div class="film-info">
                         <div class="film-title">${film.title}</div>
                         <div class="film-desc">${film.desc}</div>
                         <div class="price-tag">Ticket: Rs. ${film.price}</div>
-                        ${isUnlocked 
-                            ? `<button class="watch-btn" onclick="watchFilm(${film.id})">▶️ Watch Now</button>` 
+                        ${isUnlocked
+                            ? `<button class="watch-btn" onclick="watchFilm(${film.id})">▶️ Watch Now</button>`
                             : `<button class="buy-btn" onclick="openPay(${film.id})">🎟️ Buy Ticket (eSewa)</button>`}
                     </div>
                 </div>
@@ -129,18 +145,24 @@
     }
 
     function saveFilm() {
-        const title = document.getElementById('filmTitle').value;
-        const poster = document.getElementById('filmPoster').value || "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500";
-        const price = document.getElementById('filmPrice').value;
-        const video = document.getElementById('filmVideo').value;
-        const desc = document.getElementById('filmDesc').value;
+        const title = document.getElementById('filmTitle').value.trim();
+        let poster = document.getElementById('filmPoster').value.trim();
+        const price = document.getElementById('filmPrice').value.trim();
+        const rawVideo = document.getElementById('filmVideo').value.trim();
+        const desc = document.getElementById('filmDesc').value.trim() || "Exclusive release by AK Film Studio.";
 
-        if (!title || !price || !video) {
+        if (!title || !price || !rawVideo) {
             alert("Film Name, Ticket Price, ra Video Link compulsory ho!");
             return;
         }
-        films.push({ id: Date.now(), title, poster, price, video, desc });
-        localStorage.setItem('ak_films', JSON.stringify(films));
+        if (!poster) {
+            const vidMatch = rawVideo.match(/(?:youtu\.be\/|[?&]v=|embed\/)([a-zA-Z0-9_-]+)/);
+            poster = vidMatch ? `https://img.youtube.com/vi/${vidMatch[1]}/hqdefault.jpg` : defaultPoster;
+        }
+        const newFilm = { id: Date.now(), title, poster, price, video: toEmbedUrl(rawVideo), desc };
+        extraFilms.push(newFilm);
+        localStorage.setItem('ak_extra_films', JSON.stringify(extraFilms));
+        films = [...baseFilms, ...extraFilms];
         closeModal('adminModal');
         renderFilms();
     }
@@ -168,7 +190,7 @@
     function watchFilm(id) {
         const film = films.find(f => f.id === id);
         document.getElementById('watchTitle').innerText = film.title;
-        document.getElementById('videoContainer').innerHTML = `<iframe height="360" src="${film.video}" frameborder="0" allowfullscreen></iframe>`;
+        document.getElementById('videoContainer').innerHTML = `<iframe height="320" src="${toEmbedUrl(film.video)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         document.getElementById('watchModal').style.display = 'flex';
     }
 
